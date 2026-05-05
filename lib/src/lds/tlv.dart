@@ -29,7 +29,8 @@ class DecodedTV {
 class DecodedTL {
   final DecodedTag tag;
   final DecodedLen length;
-  final int encodedLen; // number of bytes it took to encode tag and value length
+  final int
+      encodedLen; // number of bytes it took to encode tag and value length
   DecodedTL(this.tag, this.length, this.encodedLen);
 }
 
@@ -41,7 +42,7 @@ class TLVError implements Exception {
   String toString() => message;
 }
 
-class TLVEmpty{
+class TLVEmpty {
   final int tag;
   TLVEmpty(this.tag);
 
@@ -67,7 +68,7 @@ class TLV {
   }
 
   /// Constructs [TLV] from [tag] and integer [n] as value.
- /// [n] is serialized in big endian byte order.
+  /// [n] is serialized in big endian byte order.
   factory TLV.fromIntValue(final int tag, int n) {
     return TLV(tag, Utils.intToBin(n));
   }
@@ -93,7 +94,8 @@ class TLV {
   /// throws [TLVError] if [encodedTLV] is empty or if encoding of tag/length is invalid.
   static DecodedTV decode(final Uint8List encodedTLV) {
     final tl = decodeTagAndLength(encodedTLV);
-    final data = encodedTLV.sublist(tl.encodedLen, tl.encodedLen + tl.length.value);
+    final data =
+        encodedTLV.sublist(tl.encodedLen, tl.encodedLen + tl.length.value);
     return DecodedTV(tl.tag, data, tl.encodedLen + data.length);
   }
 
@@ -108,7 +110,7 @@ class TLV {
   /// Returns BER encoded [tag];
   static Uint8List encodeTag(final int tag) {
     final byteCount = Utils.byteCount(tag);
-    var encodedTag  = Uint8List(byteCount == 0 ? 1 : byteCount);
+    var encodedTag = Uint8List(byteCount == 0 ? 1 : byteCount);
     for (int i = 0; i < byteCount; i++) {
       final pos = 8 * (byteCount - i - 1);
       encodedTag[i] = (tag & (0xFF << pos)) >> pos;
@@ -168,8 +170,9 @@ class TLV {
       throw TLVError("Can't encode negative or greater than 16 777 215 length");
     }
 
-    var byteCount   = Utils.byteCount(length);
-    var encodedLength = Uint8List(byteCount + (byteCount == 0 /*length=0*/ || length >= 0x80 ? 1 : 0));
+    var byteCount = Utils.byteCount(length);
+    var encodedLength = Uint8List(
+        byteCount + (byteCount == 0 /*length=0*/ || length >= 0x80 ? 1 : 0));
     if (length < 0x80) {
       // short form
       encodedLength[0] = length;
@@ -177,9 +180,10 @@ class TLV {
       // long form
       assert(byteCount < 3);
       encodedLength[0] = byteCount | 0x80;
-      for (int i = 0 ; i < byteCount; i++) {
+      for (int i = 0; i < byteCount; i++) {
         final pos = 8 * (byteCount - i - 1);
-        encodedLength[i + 1] = (length & (0xFF << pos)) >> pos; // encode in big endian order
+        encodedLength[i + 1] =
+            (length & (0xFF << pos)) >> pos; // encode in big endian order
       }
     }
     return encodedLength;

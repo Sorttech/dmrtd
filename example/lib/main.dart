@@ -66,9 +66,9 @@ final Map<DgTag, String> dgTagToString = {
 
 Widget _makeMrtdAccessDataWidget(
     {required String header,
-      required String collapsedText,
-      required bool isPACE,
-      required bool isDBA}) {
+    required String collapsedText,
+    required bool isPACE,
+    required bool isDBA}) {
   return ExpandablePanel(
       theme: const ExpandableThemeData(
         headerAlignment: ExpandablePanelHeaderAlignment.center,
@@ -82,19 +82,18 @@ Widget _makeMrtdAccessDataWidget(
       expanded: Container(
           padding: const EdgeInsets.all(18),
           color: Color.fromARGB(255, 239, 239, 239),
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Access protocol: ${isPACE ? "PACE" : "BAC"}',
-                  //style: TextStyle(fontSize: 16.0),
-                ),
-                SizedBox(height: 8.0),
-                Text(
-                  'Access key type: ${isDBA ? "DBA" : "CAN"}',
-                  //style: TextStyle(fontSize: 16.0),
-                )
-              ])));
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(
+              'Access protocol: ${isPACE ? "PACE" : "BAC"}',
+              //style: TextStyle(fontSize: 16.0),
+            ),
+            SizedBox(height: 8.0),
+            Text(
+              'Access key type: ${isDBA ? "DBA" : "CAN"}',
+              //style: TextStyle(fontSize: 16.0),
+            )
+          ])));
 }
 
 String formatEfCom(final EfCOM efCom) {
@@ -288,49 +287,48 @@ class _MrtdHomePageState extends State<MrtdHomePage>
   }
 
   void _buttonPressed() async {
-      print("Button pressed");
-      //Check on what tab we are
-      if (_tabController.index == 0) {
-          //DBA tab
-          String errorText = "";
-          if (_doe.text.isEmpty) {
-            errorText += "Please enter date of expiry!\n";
-          }
-          if (_dob.text.isEmpty) {
-            errorText += "Please enter date of birth!\n";
-          }
-          if (_docNumber.text.isEmpty) {
-            errorText += "Please enter passport number!";
-          }
-
-          setState(() {
-            _alertMessage = errorText;
-          });
-          //If there is an error, just jump out of the function
-          if (errorText.isNotEmpty) return;
-
-          final bacKeySeed = DBAKey(_docNumber.text, _getDOBDate()!, _getDOEDate()!, paceMode: _checkBoxPACE);
-          _readMRTD(accessKey: bacKeySeed, isPace: _checkBoxPACE);
-      } else {
-        //PACE tab
-        String errorText = "";
-        if (_can.text.isEmpty) {
-            errorText = "Please enter CAN number!";
-        }
-        else if (_can.text.length != 6) {
-          errorText = "CAN number must be exactly 6 digits long!";
-        }
-
-        setState(() {
-          _alertMessage = errorText;
-        });
-        //If there is an error, just jump out of the function
-        if (errorText.isNotEmpty) return;
-
-        final canKeySeed = CanKey(_can.text);
-        _readMRTD(accessKey: canKeySeed, isPace: true);
+    print("Button pressed");
+    //Check on what tab we are
+    if (_tabController.index == 0) {
+      //DBA tab
+      String errorText = "";
+      if (_doe.text.isEmpty) {
+        errorText += "Please enter date of expiry!\n";
+      }
+      if (_dob.text.isEmpty) {
+        errorText += "Please enter date of birth!\n";
+      }
+      if (_docNumber.text.isEmpty) {
+        errorText += "Please enter passport number!";
       }
 
+      setState(() {
+        _alertMessage = errorText;
+      });
+      //If there is an error, just jump out of the function
+      if (errorText.isNotEmpty) return;
+
+      final bacKeySeed = DBAKey(_docNumber.text, _getDOBDate()!, _getDOEDate()!,
+          paceMode: _checkBoxPACE);
+      _readMRTD(accessKey: bacKeySeed, isPace: _checkBoxPACE);
+    } else {
+      //PACE tab
+      String errorText = "";
+      if (_can.text.isEmpty) {
+        errorText = "Please enter CAN number!";
+      } else if (_can.text.length != 6) {
+        errorText = "CAN number must be exactly 6 digits long!";
+      }
+
+      setState(() {
+        _alertMessage = errorText;
+      });
+      //If there is an error, just jump out of the function
+      if (errorText.isNotEmpty) return;
+
+      final canKeySeed = CanKey(_can.text);
+      _readMRTD(accessKey: canKeySeed, isPace: true);
+    }
   }
 
   void _readMRTD({required AccessKey accessKey, bool isPace = false}) async {
@@ -946,17 +944,14 @@ class _MrtdHomePageState extends State<MrtdHomePage>
       ),
       Container(
           height: 350,
-          child: TabBarView(controller: _tabController,
-
-              children: <Widget>[
+          child: TabBarView(controller: _tabController, children: <Widget>[
             Card(
-          borderOnForeground: false,
+              borderOnForeground: false,
               elevation: 0,
               color: Colors.white,
               //shadowColor: Colors.white,
               margin: const EdgeInsets.all(16.0),
               child: Form(
-
                 key: _mrzData,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1056,47 +1051,46 @@ class _MrtdHomePageState extends State<MrtdHomePage>
                         });
                       },
                     )
-
                   ],
-                 ),
+                ),
               ),
             ),
-                Card(
-                  borderOnForeground: false,
-                  elevation: 0,
-                  color: Colors.white,
-                  //shadowColor: Colors.white,
-                  margin: const EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _canData,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        TextFormField(
-                          enabled: !_disabledInput(),
-                          controller: _can,
-                          decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              labelText: 'CAN number',
-                              fillColor: Colors.white),
-                          inputFormatters: <TextInputFormatter>[
-                            FilteringTextInputFormatter.allow(RegExp(r'[0-9]+')),
-                            LengthLimitingTextInputFormatter(6)
-                          ],
-                          textInputAction: TextInputAction.done,
-                          textCapitalization: TextCapitalization.characters,
-                          autofocus: true,
-                          validator: (value) {
-                            if (value?.isEmpty ?? false) {
-                              return 'Please enter CAN number';
-                            }
-                            return null;
-                          },
-                        ),
+            Card(
+              borderOnForeground: false,
+              elevation: 0,
+              color: Colors.white,
+              //shadowColor: Colors.white,
+              margin: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _canData,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    TextFormField(
+                      enabled: !_disabledInput(),
+                      controller: _can,
+                      decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'CAN number',
+                          fillColor: Colors.white),
+                      inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9]+')),
+                        LengthLimitingTextInputFormatter(6)
                       ],
+                      textInputAction: TextInputAction.done,
+                      textCapitalization: TextCapitalization.characters,
+                      autofocus: true,
+                      validator: (value) {
+                        if (value?.isEmpty ?? false) {
+                          return 'Please enter CAN number';
+                        }
+                        return null;
+                      },
                     ),
-                  ),
-                )
+                  ],
+                ),
+              ),
+            )
           ]))
     ]);
   }

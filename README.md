@@ -1,6 +1,19 @@
 ## Dart library for ICAO Machine Readable Travel Documents standard - Biometric Passport
 [![LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg?style=for-the-badge)](LICENSE.LGPL)
-[![tests](https://img.shields.io/github/actions/workflow/status/ZeroPass/dmrtd/test.yml?label=Tests&branch=master&logo=github&style=for-the-badge)](https://github.com/ZeroPass/dmrtd/actions/workflows/test.yml)
+
+> **Note — this is a fork.**
+>
+> This repository is a fork of [ZeroPass/dmrtd](https://github.com/ZeroPass/dmrtd)
+> maintained by Sort Group for use in our consumer-facing conveyancing
+> onboarding mobile app. It is published in compliance with LGPL-3.0 §3.
+>
+> The fork carries fixes and adjustments needed for our application;
+> upstream remains the canonical source for the library. See
+> [`CHANGES.md`](CHANGES.md) for the modification history and the fork
+> point.
+>
+> If you are looking for the original library, please use the upstream
+> repository linked above.
 
 DMRTD is dart implementation of [ICAO 9303](https://www.icao.int/publications/pages/publication.aspx?docnum=9303) standard.
 Library provide APIs to send commands to and read data from MRTD.
@@ -129,4 +142,10 @@ finally {
 * [ICAO 9303 Security mechanisms for MRTDs](https://www.icao.int/publications/Documents/9303_p11_cons_en.pdf)
 
 ## License
-This project is licensed under the terms of the GNU Lesser General Public License (LGPL) for open-source use and a Commercial License for proprietary use. See the [LICENSE.LGPL](/LICENSE.LGPL) and [LICENSE.COMMERCIAL](/LICENSE.COMMERCIAL) files for details.
+The original upstream project is dual-licensed under the GNU Lesser General Public License (LGPL-3.0) for open-source use and a Commercial License for proprietary use. See the [LICENSE.LGPL](/LICENSE.LGPL) and [LICENSE.COMMERCIAL](/LICENSE.COMMERCIAL) files for details.
+
+**Modifications introduced by this fork are made available solely under
+LGPL-3.0.** Sort Group is not the licensor of the commercial licence
+offering and cannot grant rights under it; commercial-licence enquiries
+should be directed to upstream (ZeroPass, `zeropass@pm.me`). See
+[`CHANGES.md`](CHANGES.md) for details.

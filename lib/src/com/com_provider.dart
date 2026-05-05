@@ -9,7 +9,6 @@ class ComProviderError implements Exception {
   String toString() => 'ComProviderError: $message';
 }
 
-
 /// Abstract interface for communicating with ICC.
 abstract class ComProvider {
   // ignore: unused_field
@@ -25,5 +24,5 @@ abstract class ComProvider {
   bool isConnected();
 
   /// Can throw [ComProviderError].
-  Future<Uint8List> transceive(final Uint8List data);
+  Future<Uint8List> transceive(final Uint8List data, {Duration? timeout});
 }

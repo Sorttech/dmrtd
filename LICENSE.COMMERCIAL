@@ -1,3 +1,22 @@
+--------------------------------------------------------------------------------
+NOTE FROM THE FORK MAINTAINER (Sort Group)
+--------------------------------------------------------------------------------
+
+This file is the commercial-licence offering of the upstream rights-holder,
+ZeroPass (zeropass@pm.me). It is preserved verbatim from upstream as part
+of upstream's notices.
+
+It applies ONLY to the original upstream work at
+https://github.com/ZeroPass/dmrtd. The modifications introduced by this fork
+are made available solely under the terms of LGPL-3.0 (see LICENSE.LGPL and
+CHANGES.md). Sort Group is not the licensor of this commercial licence and
+cannot grant rights under it.
+
+Anyone seeking a commercial licence for the upstream work should contact
+ZeroPass directly at zeropass@pm.me.
+
+--------------------------------------------------------------------------------
+
 Commercial License
 
 This Commercial License ("License") is a legal agreement between ZeroPass team ("Licensor") and the individual or entity ("Licensee") that has paid the required license fee for the software.

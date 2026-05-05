@@ -2,6 +2,7 @@
 import 'dart:typed_data';
 import 'package:meta/meta.dart';
 import 'package:dmrtd/extensions.dart';
+import 'package:dmrtd/src/utils/safe_hex.dart';
 
 import '../ef.dart';
 import '../tlv.dart';
@@ -11,14 +12,13 @@ class DgTag {
   const DgTag(this.value);
 
   @override
-  bool operator == (covariant DgTag other) {
+  bool operator ==(covariant DgTag other) {
     return value == other.value;
   }
 
   @override
   int get hashCode => value;
 }
-
 
 abstract class DataGroup extends ElementaryFile {
   int get tag; // TLV tag
@@ -27,10 +27,9 @@ abstract class DataGroup extends ElementaryFile {
   @override
   void parse(Uint8List content) {
     final tlv = TLV.fromBytes(content);
-    if(tlv.tag != tag) {
+    if (tlv.tag != tag) {
       throw EfParseError(
-        "Invalid tag=${tlv.tag.hex()}, expected tag=${tag.hex()}"
-      );
+          "Invalid tag=${tlv.tag.hex()}, expected tag=${tag.hex()}");
     }
     parseContent(tlv.value);
   }
