@@ -1,5 +1,4 @@
 //  Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
-import 'package:archive/archive.dart';
 import 'dart:core';
 import 'dart:typed_data';
 
@@ -44,7 +43,7 @@ class MRZ {
 
   String toEncodedString() {
     var data = toBytes();
-    final inputStream = InputStream(data);
+    final inputStream = _ByteReader(data);
     var result = _read(inputStream, data.length);
 
     return result;
@@ -110,7 +109,7 @@ class MRZ {
   }
 
   void _parse(Uint8List data) {
-    final istream = InputStream(data);
+    final istream = _ByteReader(data);
     if (data.length == 90) {
       version = MRZVersion.td1;
       _parseTD1(istream);
@@ -125,7 +124,7 @@ class MRZ {
     }
   }
 
-  void _parseTD1(InputStream istream) {
+  void _parseTD1(_ByteReader istream) {
     documentCode = _read(istream, 2);
     country = _read(istream, 3);
     _docNum = _read(istream, 9);
@@ -161,7 +160,7 @@ class MRZ {
     _assertCheckDigit(composite, cdComposite, "Composite check digit mismatch");
   }
 
-  void _parseTD2(InputStream istream) {
+  void _parseTD2(_ByteReader istream) {
     documentCode = _read(istream, 2);
     country = _read(istream, 3);
     _setNames(_readNameIdentifiers(istream, 31));
@@ -194,7 +193,7 @@ class MRZ {
     _assertCheckDigit(composite, cdComposite, "Composite check digit mismatch");
   }
 
-  void _parseTD3(InputStream istream) {
+  void _parseTD3(_ByteReader istream) {
     documentCode = _read(istream, 2);
     country = _read(istream, 3);
     _setNames(_readNameIdentifiers(istream, 39));
@@ -255,22 +254,22 @@ class MRZ {
         _docNum, cdDocNum, "Document Number check digit mismatch");
   }
 
-  static String _read(InputStream istream, int maxLength) {
+  static String _read(_ByteReader istream, int maxLength) {
     return _readWithPad(istream, maxLength).replaceAll(RegExp(r'<+$'), '');
   }
 
-  static DateTime _readDate(InputStream istream, {bool futureDate = false}) {
+  static DateTime _readDate(_ByteReader istream, {bool futureDate = false}) {
     return _read(istream, 6).parseDateYYMMDD(futureDate: futureDate);
   }
 
-  static int _readCD(InputStream istream) {
+  static int _readCD(_ByteReader istream) {
     var scd = _readWithPad(istream, 1);
     if (scd == '<') return 0;
     return int.tryParse(scd) ??
         (throw MRZParseError("Invalid check digit character in MRZ"));
   }
 
-  static List<String> _readNameIdentifiers(InputStream istream, int maxLength) {
+  static List<String> _readNameIdentifiers(_ByteReader istream, int maxLength) {
     final nameField = _read(istream, maxLength);
     var ids = nameField.split("<<");
     for (int i = 0; i < ids.length; i++) {
@@ -279,8 +278,8 @@ class MRZ {
     return ids;
   }
 
-  static String _readWithPad(InputStream istream, int maxLength) {
-    return istream.readString(size: maxLength, utf8: false);
+  static String _readWithPad(_ByteReader istream, int maxLength) {
+    return istream.readString(size: maxLength);
   }
 
   static void _assertCheckDigit(String value, int cdigit, String errorMsg) {
@@ -288,4 +287,37 @@ class MRZ {
       throw MRZParseError(errorMsg);
     }
   }
+}
+
+/// Minimal byte cursor over a [Uint8List].
+///
+/// dmrtd previously used `InputStream` from `package:archive` solely as a
+/// forward/relative byte reader for MRZ parsing — never for (de)compression.
+/// Inlining that tiny surface removes dmrtd's only dependency on `archive`,
+/// which otherwise pinned the dependency tree to `archive ^3.x` and blocked
+/// consumers that need `archive ^4.x` (e.g. transitively via `image`).
+class _ByteReader {
+  _ByteReader(this._data);
+
+  final Uint8List _data;
+  int _offset = 0;
+
+  /// Reads [size] bytes and returns them as a string with one char-code per
+  /// byte (Latin-1 / raw). Mirrors archive's `readString(size:.., utf8: false)`.
+  /// MRZ fields are pure ASCII, so this is an exact substitute.
+  String readString({required int size}) {
+    final end = _offset + size;
+    final chunk = _data.sublist(_offset, end);
+    _offset = end;
+    return String.fromCharCodes(chunk);
+  }
+
+  /// Advances the cursor by [length] bytes.
+  void skip(int length) => _offset += length;
+
+  /// Moves the cursor back by [length] bytes.
+  void rewind(int length) => _offset -= length;
+
+  /// Resets the cursor to the start of the buffer.
+  void reset() => _offset = 0;
 }
