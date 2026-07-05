@@ -8,6 +8,7 @@ export 'src/crypto/kdf.dart';
 export 'src/lds/df1/df1.dart';
 
 export 'src/proto/bac.dart';
+export 'src/proto/pace.dart';
 export 'src/proto/public_key_pace.dart';
 export 'src/proto/des_smcipher.dart';
 export 'src/proto/aes_smcipher.dart';

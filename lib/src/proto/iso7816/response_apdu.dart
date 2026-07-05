@@ -100,8 +100,6 @@ class StatusWord {
   }
 
   int get value => (sw1 << 8) + sw2;
-  int get cla =>
-      0x00; // Default CLA for GET RESPONSE, though it usually inherits from preceding command
 
   const StatusWord({required this.sw1, required this.sw2})
       : assert(sw1 >= 0 && sw1 < 256),

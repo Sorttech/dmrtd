@@ -64,12 +64,15 @@ class NfcProvider extends ComProvider {
           readIso14443B: true,
           readIso18092: false,
           readIso15693: false);
-      if (_tag!.type != NFCTagType.iso7816) {
-        _log.info("Ignoring non ISO-7816 tag: ${_tag!.type}");
-        return await disconnect();
-      }
     } on Exception catch (e) {
       throw NfcProviderError.fromException(e);
+    }
+
+    if (_tag!.type != NFCTagType.iso7816) {
+      final tagType = _tag!.type;
+      _log.info("Ignoring non ISO-7816 tag: $tagType");
+      await disconnect();
+      throw NfcProviderError("Polled tag is not an ISO 7816 tag: $tagType");
     }
   }
 
@@ -79,11 +82,12 @@ class NfcProvider extends ComProvider {
     if (isConnected()) {
       _log.debug("Disconnecting");
       try {
-        _tag = null;
         return await FlutterNfcKit.finish(
             iosAlertMessage: iosAlertMessage, iosErrorMessage: iosErrorMessage);
       } on Exception catch (e) {
         throw NfcProviderError.fromException(e);
+      } finally {
+        _tag = null;
       }
     }
   }

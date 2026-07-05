@@ -129,5 +129,34 @@ void main() {
         throwsTLVError(message: "Can't decode empty encodedLength"));
     expect(() => EfDG1.fromBytes("1C00".parseHex()),
         throwsEfParseError(message: "Invalid tag=1C, expected tag=61"));
+
+    // Declared length exceeds available data
+    expect(
+        () => EfDG1.fromBytes("6110".parseHex()),
+        throwsTLVError(
+            message: "Encoded data length is greater than available data"));
+  });
+
+  test('Test parsing truncated EF.DG15', () {
+    // DG15 with empty SubjectPublicKeyInfo sequence
+    expect(
+        () => EfDG15.fromBytes("6F023000".parseHex()),
+        throwsEfParseError(
+            message:
+                "Failed to parse AAPublicKey from EF.DG15: Can't decode empty encodedTag"));
+
+    // DG15 with SubjectPublicKeyInfo containing only AlgorithmIdentifier
+    // and no SubjectPublicKey data.
+    expect(
+        () => EfDG15.fromBytes("6F07300530030601FF".parseHex()),
+        throwsEfParseError(
+            message:
+                "Failed to parse AAPublicKey from EF.DG15: Exception: Invalid SubjectPublicKeyInfo, missing SubjectPublicKey data"));
+
+    // DG15 with declared length exceeding available data
+    expect(
+        () => EfDG15.fromBytes("6F10300E".parseHex()),
+        throwsTLVError(
+            message: "Encoded data length is greater than available data"));
   });
 }

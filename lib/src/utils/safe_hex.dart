@@ -1,3 +1,4 @@
+// Created by Sort Group as part of the Sorttech/dmrtd fork. Licensed under LGPL-3.0.
 import 'dart:typed_data';
 
 String _toHex(dynamic v) {

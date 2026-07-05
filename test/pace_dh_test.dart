@@ -3,17 +3,14 @@ import 'dart:typed_data';
 
 import 'package:dmrtd/extensions.dart';
 import 'package:dmrtd/src/lds/asn1ObjectIdentifiers.dart';
-import 'package:dmrtd/src/lds/substruct/paceCons.dart';
 import 'package:dmrtd/src/proto/dh_pace.dart';
 import 'package:dmrtd/src/proto/iso7816/iso7816.dart';
 import 'package:dmrtd/src/proto/pace.dart';
-import 'package:dmrtd/src/proto/public_key_pace.dart';
 import 'package:dmrtd/src/utils.dart';
 import 'package:test/test.dart';
 import 'package:dmrtd/src/extension/string_apis.dart';
 import 'package:dmrtd/src/proto/iso7816/command_apdu.dart';
 import 'package:dmrtd/src/proto/dba_key.dart';
-import 'package:dmrtd/src/crypto/kdf.dart';
 import 'package:dmrtd/src/crypto/aes.dart';
 import 'package:dmrtd/src/lds/efcard_access.dart';
 
@@ -303,11 +300,7 @@ void main() {
         terminal.getSharedSecret(otherPubKey: chip.getPubKey().toBytes());
 
     //check shared secred
-    print(
-        "shared secret(chip): ${Utils.bigIntToUint8List(bigInt: calcSharedSecretChip).hex()}");
-    print(
-        "shared secret(terminal): ${Utils.bigIntToUint8List(bigInt: calcSharedSecretTerminal).hex()}");
-
+    // note: don't print key material (shared secrets) to stdout
     expect(calcSharedSecretChip, calcSharedSecretTerminal);
     expect(Utils.bigIntToUint8List(bigInt: calcSharedSecretChip), sharedSecret);
 
@@ -316,7 +309,6 @@ void main() {
         AESChiperSelector.getChiper(size: KEY_LENGTH.s128);
     Uint8List decryptedNonceCalc =
         aesCipherNonce.decrypt(data: nonceEncypted, key: kpi);
-    print("Decrypted nonce: " + decryptedNonceCalc.hex());
     expect(decryptedNonceCalc.length, 16);
     expect(decryptedNonceCalc, nonceDecrypted);
 
@@ -325,9 +317,6 @@ void main() {
         otherPubKey: terminal.getPubKey().toBytes(), nonce: nonceDecrypted);
     Uint8List chipGeneratorPoint = terminal.getMappedGenerator(
         otherPubKey: chip.getPubKey().toBytes(), nonce: nonceDecrypted);
-
-    print("Generator Point (chip): ${chipGeneratorPoint.hex()}");
-    print("Generator Point (terminal): ${terminalGeneratorPoint.hex()}");
 
     expect(terminalGeneratorPoint, chipGeneratorPoint);
     expect(terminalGeneratorPoint, mappedGenerator);
@@ -343,9 +332,6 @@ void main() {
             data: step2terminal,
             ne: 256)
         .toBytes();
-    print(step2terminalAPDU.hex());
-    print(generalAuthenticateStep2MsgTerminal.hex());
-
     expect(step2terminalAPDU, generalAuthenticateStep2MsgTerminal);
 
     ResponseAPDUStep2or3Pace step2Chip =
@@ -376,11 +362,7 @@ void main() {
             otherEphemeralPubKey: chip.getPubKeyEphemeral().toBytes());
 
     //check shared secred
-    print(
-        "Ephemeral shared secret(chip): ${Utils.bigIntToUint8List(bigInt: calcEphemeralSharedSecretChip).hex()}");
-    print(
-        "Ephemeral shared secret(terminal): ${Utils.bigIntToUint8List(bigInt: calcEphemeralSharedSecretTerminal).hex()}");
-
+    // note: don't print key material (shared secrets) to stdout
     expect(calcEphemeralSharedSecretChip, calcEphemeralSharedSecretTerminal);
     expect(Utils.bigIntToUint8List(bigInt: calcEphemeralSharedSecretChip),
         sharedSecretEphemeral);
@@ -414,8 +396,9 @@ void main() {
         seed:
             Utils.bigIntToUint8List(bigInt: calcEphemeralSharedSecretTerminal));
 
-    print("KS-enc is ${encKey.hex()}");
-    print("KS-mac is ${macKey.hex()}");
+    // note: don't print key material (KS-enc/KS-mac) to stdout
+    expect(encKey.length, 16);
+    expect(macKey.length, 16);
 
     //authentication token calculation for terminal - IFD
     Uint8List calcInputDataTTerminal = PACE.generateEncodingInputData(
@@ -479,8 +462,6 @@ void main() {
         ResponseAPDUStep4Pace(generalAuthenticateStep4MsgChip);
     step4Chip.parse();
 
-    print(step4Chip.authToken.hex());
-    print(Uint8List.fromList(tic).hex());
     expect(step4Chip.authToken, tic);
 
     print("PACE session establishment test(with DBA) - DH => OK");

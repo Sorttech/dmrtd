@@ -66,6 +66,11 @@ class EfCOM extends ElementaryFile {
     // fill _tags set.
     // Each tag should be represented as 1 byte
     for (final t in tvTagList.value) {
+      // Sanity check: low 5 bits set to 0x1F would indicate a multi-byte
+      // tag which can't be represented as 1 byte DG tag.
+      if (t == 0x00 || (t & 0x1F) == 0x1F) {
+        throw EfParseError("Invalid DG tag=${t.hex()} in EF.COM tag list");
+      }
       _tags.add(DgTag(t));
     }
   }

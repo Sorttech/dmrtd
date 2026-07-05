@@ -11,14 +11,12 @@ class ComProviderError implements Exception {
 
 /// Abstract interface for communicating with ICC.
 abstract class ComProvider {
-  // ignore: unused_field
-  final Logger _log;
-  ComProvider(Logger log) : _log = log;
+  ComProvider(Logger log);
 
-  //// Can throw [ComProviderError].
+  /// Can throw [ComProviderError].
   Future<void> connect();
 
-  //// Can throw [ComProviderError].
+  /// Can throw [ComProviderError].
   Future<void> disconnect();
 
   bool isConnected();

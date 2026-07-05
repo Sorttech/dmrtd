@@ -202,6 +202,40 @@ void main() {
               "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C36UTO7408122F1204159ZE184226B<<<<<12"
                   .codeUnits)),
           throwsMRZParseError(message: "Composite check digit mismatch"));
+
+      // Non-digit document number check digit
+      expect(
+          () => MRZ(Uint8List.fromList(
+              "I<UTOD23145890A<<<<<<<<<<<<<<<7408122F1204159UTO<<<<<<<<<<<6ERIKSSON<<ANNA<MARIA<<<<<<<<<<"
+                  .codeUnits)),
+          throwsMRZParseError(
+              message: "Invalid check digit character in MRZ"));
+
+      // Extended document number where optional data starts with filler '<'
+      expect(
+          () => MRZ(Uint8List.fromList(
+              "I<UTOD23145890<<A49<<<<<<<<<<<3407127M9507122UTO<<<<<<<<<<<2STEVENSON<<PETER<JOHN<<<<<<<<<"
+                  .codeUnits)),
+          throwsMRZParseError(
+              message: "Invalid extended document number in MRZ"));
+
+      // All-filler date of birth
+      expect(
+          () => MRZ(Uint8List.fromList(
+              "I<UTOD231458907<<<<<<<<<<<<<<<<<<<<<2F1204159UTO<<<<<<<<<<<6ERIKSSON<<ANNA<MARIA<<<<<<<<<<"
+                  .codeUnits)),
+          throwsMRZParseError(
+              message:
+                  "Invalid date in MRZ: Invalid length of compact date string"));
+
+      // Non-numeric date of birth
+      expect(
+          () => MRZ(Uint8List.fromList(
+              "I<UTOD231458907<<<<<<<<<<<<<<<74O8122F1204159UTO<<<<<<<<<<<6ERIKSSON<<ANNA<MARIA<<<<<<<<<<"
+                  .codeUnits)),
+          throwsMRZParseError(
+              message:
+                  "Invalid date in MRZ: Non-numeric characters in compact date string"));
     });
   });
 }

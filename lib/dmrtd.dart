@@ -36,3 +36,9 @@ export 'src/passport.dart';
 
 export 'src/proto/dba_key.dart';
 export 'src/proto/access_key.dart';
+export 'src/proto/can_key.dart';
+
+// Typed errors that can escape the [Passport] API.
+export 'src/proto/bac.dart' show BACError;
+export 'src/proto/pace.dart' show PACEError;
+export 'src/proto/iso7816/sm.dart' show SMError;

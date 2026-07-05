@@ -1,11 +1,9 @@
 //  Created by Nejc Skerjanc, copyright © 2024 ZeroPass. All rights reserved.
 
-import 'dart:typed_data';
 import 'package:dmrtd/extensions.dart';
 import 'package:dmrtd/src/lds/asn1ObjectIdentifiers.dart';
 import 'package:test/test.dart';
 
-import 'package:dmrtd/src/proto/access_key.dart';
 import 'package:dmrtd/src/proto/dba_key.dart';
 import 'package:dmrtd/src/proto/can_key.dart';
 

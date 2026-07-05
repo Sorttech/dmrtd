@@ -2,7 +2,6 @@
 // ignore_for_file: constant_identifier_names
 
 import 'dart:core';
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dmrtd/dmrtd.dart';
 import 'package:dmrtd/extensions.dart';
@@ -91,14 +90,21 @@ class EfDG2 extends DataGroup {
           "Invalid object tag=${bict.tag.value.hex()}, expected tag=$BIOMETRIC_INFORMATION_COUNT_TAG");
     }
 
+    if (bict.value.isEmpty) {
+      throw EfParseError("Invalid biometric information count object, no value");
+    }
     int bitCount = (bict.value[0] & 0xFF);
 
+    // Advance over each BIT so every template is read from its own position.
+    var offset = bict.encodedLen;
     for (var i = 0; i < bitCount; i++) {
-      _readBIT(bigt.value.sublist(bict.encodedLen), i);
+      offset += _readBIT(bigt.value.sublist(offset));
     }
   }
 
-  _readBIT(Uint8List stream, int index) {
+  /// Reads one biometric information template from the start of [stream] and
+  /// returns the number of bytes it took.
+  int _readBIT(Uint8List stream) {
     final tvl = TLV.decode(stream);
 
     if (tvl.tag.value != BIOMETRIC_INFORMATION_TEMPLATE_TAG) {
@@ -115,6 +121,7 @@ class EfDG2 extends DataGroup {
 
       _readBiometricDataBlock(sbh);
     }
+    return tvl.encodedLen;
   }
 
   //TODO Reads a biometric information template protected with secure messaging.
@@ -149,9 +156,12 @@ class EfDG2 extends DataGroup {
     }
 
     var data = firstBlock.value;
-    if (data[0] != 0x46 &&
-        data[1] != 0x41 &&
-        data[2] != 0x43 &&
+    if (data.length < 4) {
+      throw EfParseError("Biometric data block is too short");
+    }
+    if (data[0] != 0x46 ||
+        data[1] != 0x41 ||
+        data[2] != 0x43 ||
         data[3] != 0x00) {
       throw EfParseError("Biometric data block is invalid");
     }
@@ -178,6 +188,10 @@ class EfDG2 extends DataGroup {
     offset += 4;
 
     nrFeaturePoints = _extractContent(data, start: offset, end: offset + 2);
+    if (nrFeaturePoints < 0) {
+      throw EfParseError(
+          "Biometric data block is invalid, negative number of feature points");
+    }
     offset += 2;
 
     gender = _extractContent(data, start: offset, end: offset + 1);
@@ -235,11 +249,19 @@ class EfDG2 extends DataGroup {
   }
 
   int _extractContent(Uint8List data, {required int start, required int end}) {
-    if (end - start == 1) {
+    if (start < 0 || end > data.length || start >= end) {
+      throw EfParseError("Biometric data block is truncated");
+    }
+    final len = end - start;
+    if (len == 1) {
       return data.sublist(start, end).buffer.asByteData().getInt8(0);
-    } else if (end - start < 4)
+    } else if (len == 2) {
       return data.sublist(start, end).buffer.asByteData().getInt16(0);
-    // else if(end - start == 4)
+    } else if (len == 3) {
+      // 3 byte big endian field (e.g. featureMask, poseAngle)
+      return (data[start] << 16) | (data[start + 1] << 8) | data[start + 2];
+    }
+    // len == 4
     return data.sublist(start, end).buffer.asByteData().getInt32(0);
   }
 }

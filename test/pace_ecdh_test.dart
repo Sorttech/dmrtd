@@ -1,24 +1,17 @@
 //  Created by Nejc Skerjanc, copyright © 2023 ZeroPass. All rights reserved.
-import 'dart:convert';
-import 'dart:ffi';
 import 'dart:typed_data';
 
-import 'package:crypto/crypto.dart';
 import 'package:dmrtd/extensions.dart';
 import 'package:dmrtd/src/lds/asn1ObjectIdentifiers.dart';
-import 'package:dmrtd/src/lds/substruct/paceCons.dart';
-import 'package:dmrtd/src/proto/can_key.dart';
 import 'package:dmrtd/src/proto/ecdh_pace.dart';
 import 'package:dmrtd/src/proto/iso7816/iso7816.dart';
 import 'package:dmrtd/src/proto/pace.dart';
 import 'package:dmrtd/src/proto/public_key_pace.dart';
-import 'package:dmrtd/src/utils.dart';
 import 'package:pointycastle/ecc/api.dart';
 import 'package:test/test.dart';
 import 'package:dmrtd/src/proto/dba_key.dart';
 import 'package:dmrtd/src/proto/iso7816/command_apdu.dart';
 import 'package:dmrtd/src/extension/string_apis.dart';
-import 'package:dmrtd/src/crypto/kdf.dart';
 import 'package:dmrtd/src/crypto/aes.dart';
 import 'package:dmrtd/src/lds/efcard_access.dart';
 
@@ -268,11 +261,7 @@ void main() {
         terminal.getSharedSecret(otherPubKey: chip.publicKey);
 
     //check mapping point
-    print(
-        "terminalMappingPoint (X, Y): ${ECDHPace.ecPointToList(point: terminalMappingPoint).toBytes().hex()}");
-    print(
-        "chipMappingPoint (X, Y): ${ECDHPace.ecPointToList(point: chipMappingPoint).toBytes().hex()}");
-
+    // note: don't print key material (shared secrets) to stdout
     expect(terminalMappingPoint, chipMappingPoint);
     expect(ECDHPace.ecPointToList(point: terminalMappingPoint).toBytes(),
         Uint8List.fromList([...sharedSecretX, ...sharedSecretY]));
@@ -282,7 +271,6 @@ void main() {
         AESChiperSelector.getChiper(size: KEY_LENGTH.s128);
     Uint8List decryptedNonceCalc =
         aesCipherNonce.decrypt(data: nonceEncypted, key: kpi);
-    print("Decrypted nonce:" + decryptedNonceCalc.hex());
     expect(decryptedNonceCalc.length, 16);
     expect(decryptedNonceCalc, nonceDecrypted);
 
@@ -291,12 +279,6 @@ void main() {
         otherPubKey: terminal.publicKey, nonce: decryptedNonceCalc);
     ECPoint chipGeneratorPoint = terminal.getMappedGenerator(
         otherPubKey: chip.publicKey, nonce: decryptedNonceCalc);
-
-    print(
-        "terminalGeneratorPoint (X,Y): ${ECDHPace.ecPointToList(point: terminalGeneratorPoint).toBytes().hex()}");
-
-    print(
-        "chipGeneratorPoint (X,Y): ${ECDHPace.ecPointToList(point: chipGeneratorPoint).toBytes().hex()}");
 
     expect(terminalGeneratorPoint, chipGeneratorPoint);
     expect(ECDHPace.ecPointToList(point: terminalGeneratorPoint).toBytes(),
@@ -358,11 +340,7 @@ void main() {
         otherEphemeralPubKey: terminal.ephemeralPublicKey);
 
     //check mapping point
-    print(
-        "terminalEphemeralSharedSecret (X, Y): ${ECDHPace.ecPointToList(point: terminalEphemeralSharedSecret).toBytes().hex()}");
-    print(
-        "chipEphemeralSharedSecret (X, Y): ${ECDHPace.ecPointToList(point: chipEphemeralSharedSecret).toBytes().hex()}");
-
+    // note: don't print key material (shared secrets) to stdout
     expect(terminalEphemeralSharedSecret, chipEphemeralSharedSecret);
     expect(
         ECDHPace.ecPointToList(point: terminalEphemeralSharedSecret)
@@ -387,9 +365,6 @@ void main() {
         ResponseAPDUStep2or3Pace(generalAuthenticateStep3MsgChip);
     step3Chip.parse(tokenAgreementAlgorithm: TOKEN_AGREEMENT_ALGO.ECDH);
 
-    print(step3Chip.public.toBytes().hex());
-    print(Uint8List.fromList(
-        [...chipEphemeralPublicKeyX, ...chipEphemeralPublicKeyY]).hex());
     expect(
         step3Chip.public.toBytes(),
         Uint8List.fromList(
@@ -403,9 +378,7 @@ void main() {
     Uint8List macKey = PACE.cacluateMacKey(
         paceProtocol: efCardAccess.paceInfo!.protocol, seed: seed);
 
-    print("KS-enc is ${encKey.hex()}");
-    print("KS-mac is ${macKey.hex()}");
-
+    // note: don't print key material (KS-enc/KS-mac) to stdout
     expect(encKey, ksEnc);
     expect(macKey, ksMac);
 
@@ -472,8 +445,6 @@ void main() {
         ResponseAPDUStep4Pace(generalAuthenticateStep4MsgChip);
     step4Chip.parse();
 
-    print(step4Chip.authToken.hex());
-    print(Uint8List.fromList(tic).hex());
     expect(step4Chip.authToken, tic);
 
     print("PACE session establishment test(with DBA) - ECDH => OK");

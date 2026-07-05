@@ -26,6 +26,14 @@ enum _DF {
   DF1
 }
 
+/// Class for reading and authenticating eMRTD (passport) documents.
+///
+/// Lifecycle: use one [Passport] instance per NFC connection with the
+/// document. Establish a session with [startSession] or [startSessionPACE]
+/// before calling any of the readEf* functions, except [readEfCardAccess]
+/// which can be read without an established session. If the connection with
+/// the document is lost, reconnect and establish a new session with a new
+/// [Passport] instance or by calling [startSession]/[startSessionPACE] again.
 class Passport {
   static const aaChallengeLen = 8;
 
@@ -37,6 +45,13 @@ class Passport {
   /// [provider] should be already connected.
   Passport(final ComProvider provider) : _api = MrtdApi(provider);
 
+  // Resets state tied to a connection. Session establishment implies
+  // a fresh connection with the document.
+  void _resetSessionState() {
+    _dfSelected = _DF.None;
+    _api.resetMaxRead();
+  }
+
   /// Starts new Secure Messaging session with passport
   /// using Document Basic Access [keys].
   ///
@@ -45,8 +60,13 @@ class Passport {
   /// if BAC session is not supported.
   Future<void> startSession(final DBAKey keys) async {
     _log.debug("Starting session");
+    _resetSessionState();
     await _selectDF1();
-    await _exec(() => _api.initSessionViaBAC(keys));
+    try {
+      await _exec(() => _api.initSessionViaBAC(keys));
+    } on BACError catch (e) {
+      throw PassportError(e.message);
+    }
     _log.debug("Session established");
   }
 
@@ -54,12 +74,17 @@ class Passport {
   /// using PACE (Password Authenticated Connection Establishment) protocol.
   ///
   /// Can throw [ComProviderError] on connection failure.
-  /// Throws [PassportError] when provided [keys] are invalid or
-  /// if BAC session is not supported.
+  /// Throws [PassportError] when provided [accessKey] is invalid or
+  /// if PACE session is not supported.
   Future<void> startSessionPACE(
       final AccessKey accessKey, EfCardAccess efCardAccess) async {
     _log.debug("Starting session");
-    await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
+    _resetSessionState();
+    try {
+      await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
+    } on PACEError catch (e) {
+      throw PassportError(e.message);
+    }
     _log.debug("Session established");
   }
 
@@ -72,7 +97,7 @@ class Passport {
   /// or if calling this function prior establishing session with passport.
   ///
   /// Note: AA is not available if EF.DG15 file is missing from passport.
-  ///       Read EF.COM file To determine if file EF.DG15.
+  ///       Read EF.COM file to determine if EF.DG15 is present.
   Future<Uint8List> activeAuthenticate(final Uint8List challenge) async {
     return await _exec(() => _api.activeAuthenticate(challenge));
   }
@@ -92,7 +117,13 @@ class Passport {
       await _selectMF();
       return EfCardAccess.fromBytes(
           await _exec(() => _api.readFileBySFI(EfCardAccess.SFI)));
-    } catch (e) {
+    } on PassportError catch (e) {
+      // Connection errors (ComProviderError) are not caught here and
+      // propagate to the caller. Only fall back to FID reads for errors
+      // where a fallback makes sense e.g. file-not-found / SFI-unsupported.
+      if (!_canFallbackToFidRead(e)) {
+        rethrow;
+      }
       _log.warning(
           "Failed to read EF.CardAccess via SFI from MF: $e. Retrying via FID...");
       // Fallback: try reading by FID if SFI fails or MF selection fails.
@@ -100,7 +131,10 @@ class Passport {
       // readFileBySFI already has FID fallback logic now, but we can also try explicit FID here.
       try {
         return EfCardAccess.fromBytes(await _exec(() => _api.readFile(0x011C)));
-      } catch (e2) {
+      } on PassportError catch (e2) {
+        if (!_canFallbackToFidRead(e2)) {
+          rethrow;
+        }
         _log.warning(
             "Failed to read EF.CardAccess via FID 0x011C: $e2. Trying 0x001C...");
         return EfCardAccess.fromBytes(await _exec(() => _api.readFile(0x001C)));
@@ -108,11 +142,19 @@ class Passport {
     }
   }
 
+  // Returns true if reading a file failed with a status for which it makes
+  // sense to retry the read in a different way e.g. by FID instead of SFI.
+  static bool _canFallbackToFidRead(final PassportError e) {
+    return e.code == StatusWord.fileNotFound ||
+        e.code == StatusWord.notSupported ||
+        e.code == StatusWord.referencedDataNotFound ||
+        e.code == StatusWord.incorrectParameters ||
+        e.code == StatusWord.wrongParameters;
+  }
+
   /// Reads file EF.CardSecurity from passport.
   /// Session with passport via PACE protocol
   /// should be established prior calling this function.
-  ///
-  /// Note: PACE protocol is not supported yet.
   ///
   /// Can throw [ComProviderError] on connection error.
   /// Throws [PassportError] if file doesn't exist or
@@ -394,6 +436,8 @@ class Passport {
       throw PassportError(msg, code: e.sw);
     } on MrtdApiError catch (e) {
       throw PassportError(e.message, code: e.code);
+    } on SMError catch (e) {
+      throw PassportError(e.message);
     }
   }
 }

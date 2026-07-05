@@ -37,8 +37,11 @@ class TLVSet {
         tlvs.add(TLV(decodedTV.tag.value, decodedTV.value));
         offset += decodedTV.encodedLen;
       } catch (e) {
+        // Don't silently return truncated data; surface a typed error instead.
         _log.error("Decoding error at offset $offset: $e");
-        break;
+        throw e is TLVError
+            ? e
+            : TLVError("Failed to decode TLV at offset $offset: $e");
       }
     }
     return TLVSet(tlvs: tlvs);

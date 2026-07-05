@@ -30,7 +30,6 @@ class MrtdApiError implements Exception {
 
 /// Defines ICAO 9303 MRTD standard API to
 /// communicate and send commands to MRTD.
-/// TODO: Add ComProvider onConnected notifier and reset _maxRead to _defaultReadLength on new connection
 class MrtdApi {
   static const int challengeLen = 8; // 8 bytes
   ICC icc;
@@ -41,12 +40,21 @@ class MrtdApi {
   static const _defaultSelectP2 =
       ISO97816_SelectFileP2.returnFCP | ISO97816_SelectFileP2.returnFMD;
   final _log = Logger("mrtd.api");
-  static const int _defaultReadLength =
-      112; // 256 = expect maximum number of bytes. TODO: in production set it to 224 - JMRTD
+  // Conservative read chunk size that most passports can handle.
+  // Larger values (e.g. JMRTD's 224, or 256) speed up reading but some
+  // ICCs return errors on bigger reads; _reduceMaxRead adapts the size
+  // downward at runtime when that happens.
+  static const int _defaultReadLength = 112;
   int _maxRead = _defaultReadLength;
   static const int _readAheadLength =
       8; // Number of bytes to read at the start of file to determine file length.
   Future<void> Function()? _reinitSession;
+
+  /// Resets [_maxRead] to [_defaultReadLength].
+  /// Should be called when a new connection with MRTD is established.
+  void resetMaxRead() {
+    _maxRead = _defaultReadLength;
+  }
 
   /// Sends active authentication command to MRTD with [challenge].
   /// [challenge] must be 8 bytes long.
@@ -157,6 +165,11 @@ class MrtdApi {
 
     // Read chunk of file to obtain file length
     final chunk1 = await icc.readBinary(offset: 0, ne: _readAheadLength);
+    if (chunk1.data == null || chunk1.data!.isEmpty) {
+      throw MrtdApiError(
+          "No data received when trying to read start of file fid=0x${Utils.intToBin(fid).hex()}",
+          code: chunk1.status);
+    }
     final dtl = TLV.decodeTagAndLength(chunk1.data!);
 
     // Read the rest of the file
@@ -196,9 +209,9 @@ class MrtdApi {
         if (sfi == 0x81) fid = 0x0101; // DG1
         if (sfi == 0x82) fid = 0x0102; // DG2
         if (sfi == 0x9E) fid = 0x011E; // EF.COM
-        if (sfi == 0x9D) fid = 0x011D; // EF.SOD
-        if (sfi == 0x80 + 28) fid = 0x001C; // EF.CardAccess (SFI 0x1C)
-        if (sfi == 0x80 + 2) fid = 0x0002; // EF.CardSecurity (SFI 0x02)
+        // EF.SOD (in DF1) and EF.CardSecurity (in MF) share SFI 0x1D and FID 0x011D
+        if (sfi == 0x80 + 0x1D) fid = 0x011D;
+        if (sfi == 0x80 + 0x1C) fid = 0x011C; // EF.CardAccess (SFI 0x1C)
 
         if (fid != null) {
           return await readFile(fid);
@@ -207,6 +220,11 @@ class MrtdApi {
       rethrow;
     }
 
+    if (chunk1.data == null || chunk1.data!.isEmpty) {
+      throw MrtdApiError(
+          "No data received when trying to read start of file sfi=0x${sfi.hex()}",
+          code: chunk1.status);
+    }
     final dtl = TLV.decodeTagAndLength(chunk1.data!);
 
     // Read the rest of the file
@@ -223,6 +241,7 @@ class MrtdApi {
   Future<Uint8List> _readBinary(
       {required int offset, required int length}) async {
     var data = Uint8List(0);
+    var noDataCount = 0;
     while (length > 0) {
       int nRead = length;
       if (length > _maxRead) {
@@ -233,7 +252,7 @@ class MrtdApi {
           "_readBinary: offset=$offset nRead=$nRead remaining=$length maxRead=$_maxRead");
       try {
         ResponseAPDU rapdu;
-        if (offset > 0x7FFF) {
+        if (offset >= 0x7FFF) {
           // extended read binary
           rapdu = await icc.readBinaryExt(offset: offset, ne: nRead);
         } else {
@@ -262,12 +281,26 @@ class MrtdApi {
           await _reinitSession?.call();
         }
 
-        if (rapdu.data != null) {
+        if (rapdu.data?.isNotEmpty ?? false) {
+          noDataCount = 0;
           data = Uint8List.fromList(data + rapdu.data!);
           offset += rapdu.data!.length;
           length -= rapdu.data!.length;
+        } else if (rapdu.status == StatusWord.unexpectedEOF) {
+          // End of file reached without receiving any data,
+          // return what was read so far.
+          _log.warning(
+              "No data received and end of file reached, stopping read");
+          break;
         } else {
           _log.warning("No data received when trying to read binary");
+          noDataCount += 1;
+          if (noDataCount >= 3) {
+            _maxRead = _defaultReadLength;
+            throw MrtdApiError(
+                "No data received while trying to read file chunk.",
+                code: rapdu.status);
+          }
         }
       } on ICCError catch (e) {
         // thrown on _readBinary error when no data is received.

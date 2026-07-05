@@ -2,7 +2,6 @@
 import 'dart:typed_data';
 
 import 'package:dmrtd/extensions.dart';
-import 'package:dmrtd/src/utils/safe_hex.dart';
 
 import 'package:dmrtd/src/crypto/aes.dart';
 import 'package:dmrtd/src/crypto/des.dart';

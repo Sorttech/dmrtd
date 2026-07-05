@@ -125,8 +125,13 @@ class ECDHPace {
       throw ECDHPaceError(
           "Public key has no parameters(as BigInteger). Something went wrong in PC library.");
     }
-    return PublicKeyPACEeCDH(x: x, y: y);
+    return PublicKeyPACEeCDH(
+        x: x, y: y, fieldLength: (point.curve.fieldSize + 7) ~/ 8);
   }
+
+  /// Field size of the curve in bytes; x/y coordinates are encoded
+  /// fixed-width to this length (ICAO 9303 p11).
+  int get fieldLength => (domainParameters.curve.fieldSize + 7) ~/ 8;
 
   void generateKeyPairFromPriv({required Uint8List privKey}) {
     _log.fine(
@@ -146,7 +151,29 @@ class ECDHPace {
         "Generating key pair (from PublicKeyPACEeCDH) for domain parameter ${selectedDomainParameter.name}.");
     _log.sdDebug("Received public key: ${pubKey.toString()}");
     ECPoint ecPoint = domainParameters.curve.createPoint(pubKey.x, pubKey.y);
+    _validatePoint(ecPoint);
     return ECPublicKey(ecPoint, domainParameters);
+  }
+
+  /// Validates that received [point] is a valid public key: not the point at
+  /// infinity and on the curve (y^2 = x^3 + ax + b).
+  /// ICAO 9303 p11 mandates validation of received public keys.
+  void _validatePoint(ECPoint point) {
+    if (point.isInfinity || point.x == null || point.y == null) {
+      _log.error("Received EC public key is the point at infinity.");
+      throw ECDHPaceError("Received EC public key is the point at infinity.");
+    }
+    final curve = domainParameters.curve;
+    final x = point.x!;
+    final y = point.y!;
+    final lhs = y.square().toBigInteger();
+    final rhs = ((x.square() + curve.a!) * x + curve.b!).toBigInteger();
+    if (lhs != rhs) {
+      _log.error("Received EC public key is not on the curve "
+          "${selectedDomainParameter.name}.");
+      throw ECDHPaceError("Received EC public key is not on the curve "
+          "${selectedDomainParameter.name}.");
+    }
   }
 
   ECPoint get G => domainParameters.G;
@@ -268,7 +295,7 @@ class ECDHPace {
       throw ECDHPaceError(
           "Public key has no parameters(as BigInteger). Something went wrong in PC library.");
     }
-    return PublicKeyPACEeCDH(x: x, y: y);
+    return PublicKeyPACEeCDH(x: x, y: y, fieldLength: fieldLength);
   }
 
   PublicKeyPACEeCDH getPubKeyEphemeral() {
@@ -294,7 +321,7 @@ class ECDHPace {
       throw ECDHPaceError(
           "Public ephemeral key has no parameters(as BigInteger). Something went wrong in PC library.");
     }
-    return PublicKeyPACEeCDH(x: x, y: y);
+    return PublicKeyPACEeCDH(x: x, y: y, fieldLength: fieldLength);
   }
 
   ECPoint getSharedSecret({required ECPublicKey otherPubKey}) {
@@ -354,7 +381,7 @@ class ECDHPace {
 
     BigInt nonceBigInt = Utils.uint8ListToBigInt(nonce);
 
-    ECPoint? p = pointG! * nonceBigInt;
+    ECPoint? p = pointG * nonceBigInt;
     if (p == null) {
       _log.error(
           "ECDHPaceCurve.getMappedGeneratorPoint; p is null. Something went wrong in PC library.");
@@ -362,14 +389,14 @@ class ECDHPace {
           "ECDHPaceCurve.getMappedGeneratorPoint; p is null. Something went wrong in PC library.");
     }
 
-    ECPoint? mappedGenerator = p! + sharedSecret;
+    ECPoint? mappedGenerator = p + sharedSecret;
     if (mappedGenerator == null) {
       _log.error(
           "ECDHPaceCurve.getMappedGeneratorPoint; mappedGenerator is null. Something went wrong in PC library.");
       throw ECDHPaceError(
           "ECDHPaceCurve.getMappedGeneratorPoint; mappedGenerator is null. Something went wrong in PC library.");
     }
-    return mappedGenerator!;
+    return mappedGenerator;
   }
 }
 

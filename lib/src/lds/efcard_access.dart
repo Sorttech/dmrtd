@@ -43,7 +43,24 @@ class EfCardAccess extends ElementaryFile {
           "Invalid structure of EF.CardAccess. No data to parse.");
     }
 
-    ASN1Set set = parser.nextObject() as ASN1Set;
+    ASN1Object obj;
+    try {
+      obj = parser.nextObject();
+    } catch (e) {
+      // Untyped catch; truncated/malformed DER can throw errors
+      // (e.g. RangeError) from ASN1Parser.
+      _log.error("Invalid structure of EF.CardAccess. Failed to parse ASN.1 data: $e");
+      throw EfParseError(
+          "Invalid structure of EF.CardAccess. Failed to parse ASN.1 data: $e");
+    }
+
+    if (obj is! ASN1Set) {
+      _log.error(
+          "Invalid structure of EF.CardAccess. Parsed object is not ASN1Set.");
+      throw EfParseError(
+          "Invalid structure of EF.CardAccess. Parsed object is not ASN1Set.");
+    }
+    ASN1Set set = obj;
 
     // there are 2 structures of EF.CardAccess but second one is not required
     // - PaceInfo

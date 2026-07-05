@@ -183,6 +183,23 @@ void main() {
         () => TLV.decode("008410000000".parseHex()),
         throwsTLVError(
             message: "Encoded length is too big")); // Encoded length too big
-    expect(() => TLV.decode("0001".parseHex()), throwsRangeError);
+    expect(
+        () => TLV.decode("0001".parseHex()),
+        throwsTLVError(
+            message: "Encoded data length is greater than available data"));
+
+    // Declared length exceeds buffer size
+    expect(
+        () => TLV.decode("6104AABB".parseHex()),
+        throwsTLVError(
+            message: "Encoded data length is greater than available data"));
+    expect(
+        () => TLV.decode("6183000005AABB".parseHex()),
+        throwsTLVError(
+            message: "Encoded data length is greater than available data"));
+
+    // Multi-byte tag longer than 4 bytes
+    expect(() => TLV.decode("1F8182838485000000".parseHex()),
+        throwsTLVError(message: "Encoded tag is too big"));
   });
 }

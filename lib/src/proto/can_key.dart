@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:dmrtd/src/lds/asn1ObjectIdentifiers.dart';
 import 'package:logging/logging.dart';
 import 'package:dmrtd/extensions.dart';
-import 'package:dmrtd/src/utils/safe_hex.dart';
 
 import '../crypto/kdf.dart';
 import 'access_key.dart';
@@ -72,6 +71,5 @@ class CanKey extends AccessKey {
     _log.warning(
         "CanKeys.toString() called. This is very sensitive data. Do not use in production!");
     return "CanKeys; CAN: ${_can.hex()}";
-    return super.toString();
   }
 }

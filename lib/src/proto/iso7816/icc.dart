@@ -272,6 +272,10 @@ class ICC {
         data: data,
         ne: ne));
 
+    if (rapdu.data == null || rapdu.data!.isEmpty) {
+      throw ICCError(
+          "readBinaryExt failed. No data received", rapdu.status, rapdu.data);
+    }
     final rtlv = TLV.fromBytes(rapdu.data!);
     if (rtlv.tag != 0x53) {
       throw ICCError(
@@ -395,11 +399,13 @@ class ICC {
 
   Future<ResponseAPDU> transceive(final CommandAPDU cmd,
       {Duration? timeout}) async {
-    _log.debug("Transceiving to ICC: $cmd");
+    _log.debug(
+        "Transceiving to ICC: C-APDU(CLA:${cmd.cla.hex()} INS:${cmd.ins.hex()} P1:${cmd.p1.hex()} P2:${cmd.p2.hex()} Le:${cmd.ne} Lc:${cmd.data?.length ?? 0})");
+    _log.sdDebug(" data=${cmd.data?.hex()}");
     final rawCmd = _wrap(cmd).toBytes();
 
-    _log.debug(
-        "Sending ${rawCmd.length} byte(s) to ICC: data='${rawCmd.hex()}'");
+    _log.debug("Sending ${rawCmd.length} byte(s) to ICC");
+    _log.sdDebug(" data='${rawCmd.hex()}'");
     Uint8List rawResp = await _com.transceive(rawCmd, timeout: timeout);
     _log.debug("Received ${rawResp.length} byte(s) from ICC");
     _log.sdDebug(" data='${rawResp.hex()}'");

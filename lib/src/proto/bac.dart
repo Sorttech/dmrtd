@@ -5,7 +5,6 @@ import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:dmrtd/extensions.dart';
-import 'package:dmrtd/src/utils/safe_hex.dart';
 
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
@@ -95,7 +94,7 @@ class BAC {
     // Decrypt R from received Eicc
     _log.debug("Generating session keys KSenc and KSmac");
     final R = D(Kdec: Kenc, Eicc: pairEiccMicc.first);
-    _log.verbose("Decrypted R=${R.hex()}");
+    _log.sdVerbose("Decrypted R=${R.hex()}");
 
     // Verify R contains our RND.IFD and extract Kicc from R
     final Kicc = verifyRNDifdAndExtractKicc(RNDifd: RNDifd, R: R);
@@ -234,6 +233,6 @@ class BAC {
     assert(Eicc.length == eLen);
     assert(Kmac.length == ISO9797.macAlg3_Key1Len);
     assert(Micc.length == macLen);
-    return _eq(MAC(Kmac: Kmac, Eifd: Eicc), Micc);
+    return constantTimeEquals(MAC(Kmac: Kmac, Eifd: Eicc), Micc);
   }
 }

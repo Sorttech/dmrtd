@@ -1,10 +1,9 @@
 //  Created by Nejc Skerjanc, copyright © 2023 ZeroPass. All rights reserved.
 import 'dart:typed_data';
 
-import 'package:collection/collection.dart';
-
 import 'package:dmrtd/src/lds/asn1ObjectIdentifiers.dart';
 import 'package:dmrtd/src/proto/public_key_pace.dart';
+import 'package:dmrtd/src/crypto/crypto_utils.dart';
 import 'package:dmrtd/src/crypto/kdf.dart';
 import 'package:dmrtd/src/crypto/aes.dart';
 import 'package:dmrtd/src/crypto/iso9797.dart';
@@ -125,14 +124,9 @@ class ResponseAPDUStep1Pace {
   ResponseAPDUStep1Pace(this.data);
 
   void parse() {
-    //checking if response has data
-    if (this.data == null) {
-      _log.error("Pace.step1; Response data is null");
-      throw ResponseAPDUStep1PaceError("Pace.step1; Response data is null");
-    }
     _log.sdVerbose("ResponseAPDUStep1Pace data: ${safeHex(data)}");
 
-    TLV dynamicAuthenticationData = TLV.fromBytes(data!);
+    TLV dynamicAuthenticationData = TLV.fromBytes(data);
 
     //checking if response contains dynamic authentication data
     if (dynamicAuthenticationData.tag !=
@@ -170,14 +164,9 @@ class ResponseAPDUStep2or3Pace {
   ResponseAPDUStep2or3Pace(this.data);
 
   void parse({required TOKEN_AGREEMENT_ALGO tokenAgreementAlgorithm}) {
-    //checking if response has data
-    if (this.data == null) {
-      _log.error("Pace.step2; Response data is null");
-      throw ResponseAPDUStep2or3PaceError("Pace.step2; Response data is null");
-    }
     _log.sdVerbose("ResponseAPDUStep2and3Pace data: ${safeHex(data)}");
 
-    TLV dynamicAuthenticationData = TLV.fromBytes(data!);
+    TLV dynamicAuthenticationData = TLV.fromBytes(data);
 
     //checking if response contains dynamic authentication data
     if (dynamicAuthenticationData.tag !=
@@ -251,15 +240,9 @@ class ResponseAPDUStep4Pace {
   ResponseAPDUStep4Pace(this.data);
 
   void parse() {
-    //checking if response has data
-    if (this.data == null) {
-      _log.error("Pace.step4; Response data is null");
-      throw ResponseAPDUStep2or3PaceError("Pace.step4; Response data is null");
-    }
-
     _log.sdVerbose("ResponseAPDUStep4Pace data: ${safeHex(data)}");
 
-    TLV dynamicAuthenticationData = TLV.fromBytes(data!);
+    TLV dynamicAuthenticationData = TLV.fromBytes(data);
 
     //checking if response contains dynamic authentication data
     if (dynamicAuthenticationData.tag !=
@@ -372,7 +355,7 @@ class PACE {
 
       _log.sdVerbose(
           "Object identifier: ${safeHex(objectIdentifierData.toBytes())}");
-      TLV? publicKeyData = null;
+      TLV publicKeyData;
 
       _log.sdVerbose("Ephemeral public point: ${ephemeralPublic.toString()}");
 
@@ -388,11 +371,6 @@ class PACE {
         _log.sdVerbose("Public key DH: ${safeHex(publicKeyData.toBytes())}");
       }
 
-      if (publicKeyData == null) {
-        _log.error("PACE.generateEncodingInputData; Public key DH is null");
-        throw PACEError(
-            "PACE.generateEncodingInputData; Public key DH is null");
-      }
       TLV inputData = TLV(
           INPUT_DATA_T_TAG,
           Uint8List.fromList(
@@ -660,8 +638,9 @@ class PACE {
       } else if (cipherAlgo == CipherAlgorithm.DESede) {
         _log.debug("PACE.decryptNonce; Cipher algorithm: DESede");
         /*key iv data*/
-        Uint8List decryptedNonce =
-            DESedeDecrypt(edata: nonce, key: k_pi, iv: Uint8List(8));
+        // The nonce is raw random data, not ISO9797 padded - don't unpad it.
+        Uint8List decryptedNonce = DESedeDecrypt(
+            edata: nonce, key: k_pi, iv: Uint8List(8), paddedData: false);
         _log.sdVerbose(
             "PACE.decryptNonce; Decrypted nonce: ${safeHex(decryptedNonce)}");
         return decryptedNonce;
@@ -968,7 +947,8 @@ class PACE {
             "Received auth token from ICC: ${safeHex(computedAuthTokenICC)}"
             ", Computed auth token: ${safeHex(inputTokenTerminalforCheck)}");
 
-        if (!inputTokenTerminalforCheck.equals(computedAuthTokenICC)) {
+        if (!constantTimeEquals(
+            inputTokenTerminalforCheck, computedAuthTokenICC)) {
           _log.error(
               "PACE(4); Auth token from ICC and terminal are not the same");
           throw PACEError(
@@ -1184,9 +1164,11 @@ class PACE {
         _log.sdVerbose("Ephemeral shared secret (X, Y): "
             "${safeHex(Utils.bigIntToUint8List(bigInt: ephemeralSharedSecretKey))}");
 
-        //not sure if correct
-        Uint8List seed =
-            Utils.bigIntToUint8List(bigInt: ephemeralSharedSecretKey);
+        // Per ICAO 9303 p11 the DH shared secret octet string is encoded
+        // fixed-width to the full prime length.
+        Uint8List seed = Utils.bigIntToUint8List(
+            bigInt: ephemeralSharedSecretKey,
+            length: domainParameter.primeByteLength);
         _log.sdVerbose("Seed: ${safeHex(seed)}");
 
         Uint8List encKey =
@@ -1284,7 +1266,8 @@ class PACE {
             "Received auth token from ICC: ${safeHex(computedAuthTokenICC)}"
             ", Computed auth token: ${safeHex(inputTokenTerminalforCheck)}");
 
-        if (!inputTokenTerminalforCheck.equals(computedAuthTokenICC)) {
+        if (!constantTimeEquals(
+            inputTokenTerminalforCheck, computedAuthTokenICC)) {
           _log.error(
               "PACE(4); Auth token from ICC and terminal are not the same");
           throw PACEError(

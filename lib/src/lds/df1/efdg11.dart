@@ -104,43 +104,43 @@ class EfDG11 extends DataGroup {
 
       switch (uvtv.tag.value) {
         case FULL_NAME_TAG:
-          _nameOfHolder = utf8.decode(uvtv.value);
+          _nameOfHolder = utf8.decode(uvtv.value, allowMalformed: true);
           break;
         case PERSONAL_NUMBER_TAG:
-          _personalNumber = utf8.decode(uvtv.value);
+          _personalNumber = utf8.decode(uvtv.value, allowMalformed: true);
           break;
         case OTHER_NAME_TAG:
-          _otherNames.add(utf8.decode(uvtv.value));
+          _otherNames.add(utf8.decode(uvtv.value, allowMalformed: true));
           break;
         case FULL_DATE_OF_BIRTH_TAG:
           _fullDateOfBirth = String.fromCharCodes(uvtv.value).parseDate();
           break;
         case PLACE_OF_BIRTH_TAG:
-          _placeOfBirth.add(utf8.decode(uvtv.value));
+          _placeOfBirth.add(utf8.decode(uvtv.value, allowMalformed: true));
           break;
         case PERMANENT_ADDRESS_TAG:
-          _permanentAddress.add(utf8.decode(uvtv.value));
+          _permanentAddress.add(utf8.decode(uvtv.value, allowMalformed: true));
           break;
         case TELEPHONE_TAG:
-          _telephone = utf8.decode(uvtv.value);
+          _telephone = utf8.decode(uvtv.value, allowMalformed: true);
           break;
         case PROFESSION_TAG:
-          _profession = utf8.decode(uvtv.value);
+          _profession = utf8.decode(uvtv.value, allowMalformed: true);
           break;
         case TITLE_TAG:
-          _title = utf8.decode(uvtv.value);
+          _title = utf8.decode(uvtv.value, allowMalformed: true);
           break;
         case PERSONAL_SUMMARY_TAG:
-          _personalSummary = utf8.decode(uvtv.value);
+          _personalSummary = utf8.decode(uvtv.value, allowMalformed: true);
           break;
         case PROOF_OF_CITIZENSHIP_TAG:
           _proofOfCitizenship = uvtv.value;
           break;
         case OTHER_VALID_TD_NUMBERS_TAG:
-          _otherValidTDNumbers.add(utf8.decode(uvtv.value));
+          _otherValidTDNumbers.add(utf8.decode(uvtv.value, allowMalformed: true));
           break;
         case CUSTODY_INFORMATION_TAG:
-          _custodyInformation = utf8.decode(uvtv.value);
+          _custodyInformation = utf8.decode(uvtv.value, allowMalformed: true);
           break;
       }
     }

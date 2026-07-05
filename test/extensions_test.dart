@@ -425,6 +425,27 @@ void main() {
           tenAnd6MonthsFromNow.formatYYMMDD().parseDateYYMMDD(futureDate: true),
           tenAnd6MonthsFromNow);
     });
+
+    test('Parsing invalid date strings', () {
+      // Too short
+      expect(() => '89110'.parseDateYYMMDD(), throwsFormatException);
+      // Non-numeric characters
+      expect(() => '<<<<<<'.parseDateYYMMDD(), throwsFormatException);
+      expect(() => '89O109'.parseDateYYMMDD(), throwsFormatException);
+      // Invalid month/day
+      expect(() => '891309'.parseDateYYMMDD(), throwsFormatException);
+      expect(() => '890009'.parseDateYYMMDD(), throwsFormatException);
+      expect(() => '891100'.parseDateYYMMDD(), throwsFormatException);
+      expect(() => '891132'.parseDateYYMMDD(), throwsFormatException);
+      // Valid ranges but invalid calendar date (would roll over)
+      expect(() => '890230'.parseDateYYMMDD(), throwsFormatException);
+      expect(() => '891131'.parseDateYYMMDD(), throwsFormatException);
+
+      // parseDate with full yyyymmdd date
+      expect('19891109'.parseDate(), DateTime(1989, 11, 9));
+      expect(() => '19891309'.parseDate(), throwsFormatException);
+      expect(() => '19890230'.parseDate(), throwsFormatException);
+    });
   });
 
   group('LogApis tests', () {

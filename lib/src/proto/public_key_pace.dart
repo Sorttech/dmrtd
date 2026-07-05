@@ -2,7 +2,6 @@
 
 import 'dart:typed_data';
 import 'package:dmrtd/extensions.dart';
-import 'package:dmrtd/src/utils/safe_hex.dart';
 
 import 'package:pointycastle/ecc/api.dart';
 
@@ -26,21 +25,30 @@ abstract class PublicKeyPACE {
 class PublicKeyPACEeCDH extends PublicKeyPACE {
   final BigInt _x;
   final BigInt _y;
-  PublicKeyPACEeCDH({required BigInt x, required BigInt y})
+
+  // Curve field size in bytes. When set, x/y are encoded fixed-width
+  // (left-padded with zero bytes) as required by ICAO 9303 p11.
+  final int? _fieldLength;
+
+  PublicKeyPACEeCDH({required BigInt x, required BigInt y, int? fieldLength})
       : _x = x,
         _y = y,
+        _fieldLength = fieldLength,
         super(algo: TOKEN_AGREEMENT_ALGO.ECDH);
 
   PublicKeyPACEeCDH.fromECPoint({required ECPoint public})
       : _x = public.x!.toBigInteger()!,
         _y = public.y!.toBigInteger()!,
+        _fieldLength = (public.curve.fieldSize + 7) ~/ 8,
         super(algo: TOKEN_AGREEMENT_ALGO.ECDH);
 
   BigInt get x => _x;
   BigInt get y => _y;
 
-  Uint8List get xBytes => Utils.bigIntToUint8List(bigInt: _x);
-  Uint8List get yBytes => Utils.bigIntToUint8List(bigInt: _y);
+  Uint8List get xBytes =>
+      Utils.bigIntToUint8List(bigInt: _x, length: _fieldLength);
+  Uint8List get yBytes =>
+      Utils.bigIntToUint8List(bigInt: _y, length: _fieldLength);
 
   @override
   Uint8List toBytes() {
@@ -50,6 +58,7 @@ class PublicKeyPACEeCDH extends PublicKeyPACE {
   PublicKeyPACEeCDH.fromHex({required Uint8List hexKey})
       : _x = Utils.uint8ListToBigInt(hexKey.sublist(0, hexKey.length ~/ 2)),
         _y = Utils.uint8ListToBigInt(hexKey.sublist(hexKey.length ~/ 2)),
+        _fieldLength = hexKey.length ~/ 2,
         super(algo: TOKEN_AGREEMENT_ALGO.ECDH);
 
   @override

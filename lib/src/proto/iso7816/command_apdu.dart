@@ -134,6 +134,17 @@ class CommandAPDU {
     return le;
   }
 
+  /// Returns a deep copy of this command APDU.
+  CommandAPDU copy() {
+    return CommandAPDU(
+        cla: _cla,
+        ins: _ins,
+        p1: _p1,
+        p2: _p2,
+        data: _data != null ? Uint8List.fromList(_data!) : null,
+        ne: _ne);
+  }
+
   /// Returns serialized header bytes.
   Uint8List rawHeader() {
     return Uint8List.fromList([_cla, _ins, _p1, _p2]);

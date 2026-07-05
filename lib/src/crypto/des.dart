@@ -161,7 +161,8 @@ class DESCipher {
 
   static List<int> _bytesToDWordList(final Uint8List bytes) {
     final dwords = List<int>.filled((bytes.length / 4).round(), 0);
-    final view = ByteData.view(bytes.buffer);
+    // sublistView honours bytes.offsetInBytes, unlike ByteData.view(bytes.buffer)
+    final view = ByteData.sublistView(bytes);
     for (int i = 0; i < dwords.length; i++) {
       dwords[i] = view.getInt32(i * 4);
     }

@@ -3,7 +3,6 @@
 
 import 'dart:typed_data';
 import 'package:dmrtd/extensions.dart';
-import 'package:dmrtd/src/utils/safe_hex.dart';
 
 import 'package:logging/logging.dart';
 
@@ -62,8 +61,12 @@ class ISO9797 {
   // Returns unpadded data according to ISO/IEC 9797-1, padding method 2 scheme.
   static Uint8List unpad(Uint8List data) {
     var i = data.length - 1;
-    while (data[i] == 0x00) {
+    while (i >= 0 && data[i] == 0x00) {
       i -= 1;
+    }
+    if (i < 0) {
+      throw FormatException(
+          "Invalid ISO/IEC 9797-1 padding, no 0x80 marker found");
     }
     if (data[i] == 0x80) {
       return data.sublist(0, i);

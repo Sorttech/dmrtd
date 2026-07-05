@@ -100,4 +100,27 @@ void main() {
     expect(Utils.intToBin(0x10101, minLen: 4), "00010101".parseHex());
     expect(Utils.intToBin(0x10000, minLen: 5), "0000010000".parseHex());
   });
+
+  test('BigInt to bytes test', () {
+    // default: shrunk to minimal byte length
+    expect(Utils.bigIntToUint8List(bigInt: BigInt.from(0x01)), "01".parseHex());
+    expect(
+        Utils.bigIntToUint8List(bigInt: BigInt.from(0xFFFF)), "FFFF".parseHex());
+
+    // fixed-width: left-padded with zero bytes to requested length
+    expect(Utils.bigIntToUint8List(bigInt: BigInt.from(0x01), length: 4),
+        "00000001".parseHex());
+    expect(Utils.bigIntToUint8List(bigInt: BigInt.from(0xFFFF), length: 4),
+        "0000FFFF".parseHex());
+    expect(Utils.bigIntToUint8List(bigInt: BigInt.zero, length: 2),
+        "0000".parseHex());
+
+    // fixed-width is a no-op when value already has the requested length
+    expect(Utils.bigIntToUint8List(bigInt: BigInt.from(0xA1B2C3D4), length: 4),
+        "A1B2C3D4".parseHex());
+
+    // requested length too small to hold the value throws
+    expect(() => Utils.bigIntToUint8List(bigInt: BigInt.from(0x10000), length: 2),
+        throwsArgumentError);
+  });
 }

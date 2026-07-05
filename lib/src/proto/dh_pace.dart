@@ -134,6 +134,10 @@ class DHPace {
   bool get isEphemeralPublicKeySet => _engineEphemeral != null;
   BigInt get ephemeralPublicKey => _engineEphemeral!.publicKey;
 
+  /// Byte length of the prime modulus p; public keys and shared secrets are
+  /// encoded fixed-width to this length (ICAO 9303 p11).
+  int get primeByteLength => (_domainParameters.p.bitLength + 7) ~/ 8;
+
   DHPace({required int id, required DhParameterSpec domainParameters})
       : _domainParameters = domainParameters {
     if (!ICAO_DOMAIN_PARAMETERS.containsKey(id)) {
@@ -152,11 +156,11 @@ class DHPace {
         "This function is only for testing purposes. It prints private keys. Do not use in production.");
     String forReturn = "DHPace: ${selectedDomainParameter.name}: ";
     bool isAny = false;
-    if (isPublicKeySet && _engine!.privateKey != null) {
+    if (isPublicKeySet) {
       forReturn += " private key: ${_engine!.privateKey.toString()}";
       isAny = true;
     }
-    if (isEphemeralPublicKeySet && _engine!.privateKey != null) {
+    if (isEphemeralPublicKeySet) {
       forReturn +=
           " ephemeral private key: ${_engineEphemeral!.privateKey.toString()}";
       isAny = true;
@@ -267,7 +271,9 @@ class DHPace {
       throw DHPaceError(
           "DHPace.getPubKey; Private key is null. Generate key pair first.");
     }
-    return PublicKeyPACEdH(pub: Utils.bigIntToUint8List(bigInt: publicKey));
+    return PublicKeyPACEdH(
+        pub: Utils.bigIntToUint8List(
+            bigInt: publicKey, length: primeByteLength));
   }
 
   PublicKeyPACEdH getPubKeyEphemeral() {
@@ -278,7 +284,8 @@ class DHPace {
           "DHPace.getPubKeyEphemeral; Public ephemeral key is null. Generate ephemeral key pair first.");
     }
     return PublicKeyPACEdH(
-        pub: Utils.bigIntToUint8List(bigInt: ephemeralPublicKey));
+        pub: Utils.bigIntToUint8List(
+            bigInt: ephemeralPublicKey, length: primeByteLength));
   }
 
   BigInt getSharedSecret({required Uint8List otherPubKey}) {
@@ -348,7 +355,7 @@ class DHPace {
     BigInt generator = _engine!.computeGenerator(
         otherPublicKey: Utils.uint8ListToBigInt(otherPubKey),
         nonce: Utils.uint8ListToBigInt(nonce));
-    return Utils.bigIntToUint8List(bigInt: generator);
+    return Utils.bigIntToUint8List(bigInt: generator, length: primeByteLength);
   }
 }
 

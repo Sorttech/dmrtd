@@ -94,6 +94,9 @@ class TLV {
   /// throws [TLVError] if [encodedTLV] is empty or if encoding of tag/length is invalid.
   static DecodedTV decode(final Uint8List encodedTLV) {
     final tl = decodeTagAndLength(encodedTLV);
+    if (tl.encodedLen + tl.length.value > encodedTLV.length) {
+      throw TLVError("Encoded data length is greater than available data");
+    }
     final data =
         encodedTLV.sublist(tl.encodedLen, tl.encodedLen + tl.length.value);
     return DecodedTV(tl.tag, data, tl.encodedLen + data.length);
@@ -144,6 +147,11 @@ class TLV {
           while ((b & 0x80) == 0x80) {
             if (offset >= encodedTag.length) {
               throw TLVError("Invalid encoded tag");
+            }
+            if (offset >= 4) {
+              // Cap tag length to 4 bytes (BER practice), otherwise
+              // `tag <<= 8` would silently wrap on long continuation sequences.
+              throw TLVError("Encoded tag is too big");
             }
 
             tag <<= 8;

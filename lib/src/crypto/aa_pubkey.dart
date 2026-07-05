@@ -60,6 +60,10 @@ class AAPublicKey {
     }
 
     _subPubKeyBytes = tvPubKeyInfo.value.sublist(tvAlg.encodedLen);
+    if (_subPubKeyBytes.isEmpty) {
+      throw Exception(
+          "Invalid SubjectPublicKeyInfo, missing SubjectPublicKey data");
+    }
     if (_subPubKeyBytes[0] != 0x03) {
       // Bit String
       throw Exception(

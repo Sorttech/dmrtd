@@ -241,13 +241,18 @@ class MRZ {
     int cdDocNum = 0;
     if (strCdDocNum == '<' && _optData.length > 2) {
       final dnSecondPart = _optData.split('<')[0];
+      if (dnSecondPart.isEmpty) {
+        throw MRZParseError("Invalid extended document number in MRZ");
+      }
       _docNum += dnSecondPart.substring(0, dnSecondPart.length - 1);
 
-      cdDocNum = int.parse(dnSecondPart[dnSecondPart.length - 1]);
+      cdDocNum = int.tryParse(dnSecondPart[dnSecondPart.length - 1]) ??
+          (throw MRZParseError("Invalid check digit character in MRZ"));
       _optData = _optData2 ?? '';
       _optData2 = null;
     } else {
-      cdDocNum = int.parse(strCdDocNum);
+      cdDocNum = int.tryParse(strCdDocNum) ??
+          (throw MRZParseError("Invalid check digit character in MRZ"));
     }
 
     _assertCheckDigit(
@@ -259,7 +264,11 @@ class MRZ {
   }
 
   static DateTime _readDate(_ByteReader istream, {bool futureDate = false}) {
-    return _read(istream, 6).parseDateYYMMDD(futureDate: futureDate);
+    try {
+      return _read(istream, 6).parseDateYYMMDD(futureDate: futureDate);
+    } on FormatException catch (e) {
+      throw MRZParseError("Invalid date in MRZ: ${e.message}");
+    }
   }
 
   static int _readCD(_ByteReader istream) {

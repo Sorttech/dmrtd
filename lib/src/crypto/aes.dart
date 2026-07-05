@@ -2,7 +2,6 @@
 
 import 'dart:typed_data';
 import 'package:dmrtd/extensions.dart';
-import 'package:dmrtd/src/utils/safe_hex.dart';
 
 import 'package:logging/logging.dart';
 import 'package:pointycastle/export.dart';
@@ -41,8 +40,6 @@ class AESCipher {
         return 24;
       case KEY_LENGTH.s256:
         return 32;
-      default:
-        throw AESCipherError("Invalid key size. Must be 16, 24, or 32 bytes.");
     }
   }
 
@@ -192,14 +189,10 @@ class AESChiperSelector {
         return AESCipher128();
       case KEY_LENGTH.s192:
         _log.finer("AES chiper with 192-bit key size selected.");
-        return AESCipher128();
+        return AESCipher192();
       case KEY_LENGTH.s256:
         _log.finer("AES chiper with 256-bit key size selected.");
         return AESCipher256();
-
-      default:
-        _log.error("AESChiperSelector; Size is not supported.");
-        throw AESCipherError("AESChiperSelector; Size is not supported.");
     }
   }
 }

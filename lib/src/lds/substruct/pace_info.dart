@@ -42,7 +42,7 @@ int VERSION_VALUE_CONST = 2;
 class PaceInfo {
   late OIEPaceProtocol _protocol;
   late int _version;
-  late int? _parameterId;
+  int? _parameterId;
 
   bool _isPaceDomainParameterSupported = false;
 
@@ -73,10 +73,12 @@ class PaceInfo {
     _log.info("Parsing PaceInfo...");
     _log.sdDebug("Data: $content");
 
-    if (content.elements == null || content.elements!.length < 3) {
-      _log.error("Invalid structure of PaceInfo. Less than 3 elements in set.");
+    // parameterId is OPTIONAL per the ASN.1 spec, so at least 2 elements
+    // (protocol and version) are required.
+    if (content.elements == null || content.elements!.length < 2) {
+      _log.error("Invalid structure of PaceInfo. Less than 2 elements in set.");
       throw EfParseError(
-          "Invalid structure of PaceInfo. Less than 3 elements in set.");
+          "Invalid structure of PaceInfo. Less than 2 elements in set.");
     }
 
     //
@@ -84,19 +86,31 @@ class PaceInfo {
     //
 
     _log.info("... parsing protocol ...");
+    if (content.elements![0] is! ASN1ObjectIdentifier) {
+      _log.error(
+          "Invalid structure of PaceInfo. Protocol is not ASN1ObjectIdentifier.");
+      throw EfParseError(
+          "Invalid structure of PaceInfo. Protocol is not ASN1ObjectIdentifier.");
+    }
     ASN1ObjectIdentifier protocol =
-        content.elements?[0] as ASN1ObjectIdentifier;
+        content.elements![0] as ASN1ObjectIdentifier;
+
+    final String? protocolOID = protocol.objectIdentifierAsString;
+    if (protocolOID == null) {
+      _log.error("Invalid protocol in PaceInfo. Protocol OID is null.");
+      throw EfParseError("Invalid protocol in PaceInfo. Protocol OID is null.");
+    }
 
     if (!protocolType.hasOIDWithIdentifierString(
-        identifierString: protocol.objectIdentifierAsString!)) {
+        identifierString: protocolOID)) {
       _log.sdError(
-          "Invalid protocol in PaceInfo. Protocol is not valid: ${protocol.objectIdentifierAsString}");
+          "Invalid protocol in PaceInfo. Protocol is not valid: $protocolOID");
       throw EfParseError(
-          "Invalid protocol in PaceInfo. Protocol is not valid: ${protocol.objectIdentifierAsString}");
+          "Invalid protocol in PaceInfo. Protocol is not valid: $protocolOID");
     }
     _protocol = OIEPaceProtocol.fromMap(
         item: protocolType.getOIDByIdentifierString(
-            identifierString: protocol.objectIdentifierAsString!));
+            identifierString: protocolOID));
     _log.info("... protocol parsed ...");
     _log.sdDebug("Protocol: $protocol");
 
@@ -105,7 +119,12 @@ class PaceInfo {
     //
 
     _log.info("... parsing version ...");
-    ASN1Integer version = content.elements?[1] as ASN1Integer;
+    if (content.elements![1] is! ASN1Integer) {
+      _log.error("Invalid structure of PaceInfo. Version is not ASN1Integer.");
+      throw EfParseError(
+          "Invalid structure of PaceInfo. Version is not ASN1Integer.");
+    }
+    ASN1Integer version = content.elements![1] as ASN1Integer;
     if (version.integer == null) {
       _log.error("Invalid version in PaceInfo. Version is null.");
       throw EfParseError("Invalid version in PaceInfo. Version is null.");
@@ -117,46 +136,58 @@ class PaceInfo {
           "Invalid version in PaceInfo. Version is not equal to $VERSION_VALUE_CONST.");
     }
 
-    _version = version.integer?.toInt() as int;
+    _version = version.integer!.toInt();
     _log.info("... version parsed ...");
     _log.sdDebug("Version: $version");
 
     //
-    // parsing parameterId
+    // parsing parameterId (OPTIONAL)
     //
 
     _log.info("... parsing parameterId ...");
-    ASN1Integer parameterId = content.elements?[2] as ASN1Integer;
-    if (parameterId.integer == null) {
-      _log.error("Invalid parameterId in PaceInfo. ParameterId is null.");
-      throw EfParseError(
-          "Invalid parameterId in PaceInfo. ParameterId is null.");
-    }
+    if (content.elements!.length > 2) {
+      if (content.elements![2] is! ASN1Integer) {
+        _log.error(
+            "Invalid structure of PaceInfo. ParameterId is not ASN1Integer.");
+        throw EfParseError(
+            "Invalid structure of PaceInfo. ParameterId is not ASN1Integer.");
+      }
+      ASN1Integer parameterId = content.elements![2] as ASN1Integer;
+      if (parameterId.integer == null) {
+        _log.error("Invalid parameterId in PaceInfo. ParameterId is null.");
+        throw EfParseError(
+            "Invalid parameterId in PaceInfo. ParameterId is null.");
+      }
 
-    _parameterId = parameterId.integer?.toInt() as int;
+      _parameterId = parameterId.integer!.toInt();
 
-    // checking if domain parameter is supported
+      // checking if domain parameter is supported
 
-    try {
-      //check if DomainParameterSelectorEC(DH) raises exception
-      if (_protocol.tokenAgreementAlgorithm == TOKEN_AGREEMENT_ALGO.ECDH)
-        DomainParameterSelectorECDH.getDomainParameter(id: _parameterId!);
-      else
-        DomainParameterSelectorDH.getDomainParameter(id: _parameterId!);
+      try {
+        //check if DomainParameterSelectorEC(DH) raises exception
+        if (_protocol.tokenAgreementAlgorithm == TOKEN_AGREEMENT_ALGO.ECDH)
+          DomainParameterSelectorECDH.getDomainParameter(id: _parameterId!);
+        else
+          DomainParameterSelectorDH.getDomainParameter(id: _parameterId!);
 
-      _isPaceDomainParameterSupported = true;
-    } catch (e) {
-      // we do not raise exception, because we can use paceInfo for
-      // other purposes - not only for PACE
-      _log.error("Token agreement algorithm not supported. Exception: $e");
-      _log.debug(
-          "Token agreement algorithm '${_protocol.tokenAgreementAlgorithm}'"
-          " with domain parameterId '$_parameterId' is not supported.");
+        _isPaceDomainParameterSupported = true;
+      } catch (e) {
+        // we do not raise exception, because we can use paceInfo for
+        // other purposes - not only for PACE
+        _log.error("Token agreement algorithm not supported. Exception: $e");
+        _log.debug(
+            "Token agreement algorithm '${_protocol.tokenAgreementAlgorithm}'"
+            " with domain parameterId '$_parameterId' is not supported.");
+        _isPaceDomainParameterSupported = false;
+      }
+
+      _log.info("... parameterId parsed ...");
+      _log.sdDebug("ParameterId: $parameterId");
+    } else {
+      _parameterId = null;
       _isPaceDomainParameterSupported = false;
+      _log.info("... parameterId not present (optional) ...");
     }
-
-    _log.info("... parameterId parsed ...");
-    _log.sdDebug("ParameterId: $parameterId");
 
     _log.info("... paceInfo successfully parsed.");
   }

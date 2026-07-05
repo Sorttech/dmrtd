@@ -3,7 +3,6 @@
 
 import 'dart:typed_data';
 
-import 'package:collection/collection.dart';
 import 'package:dmrtd/extensions.dart';
 
 import 'package:logging/logging.dart';
@@ -19,13 +18,12 @@ import 'iso7816/smcipher.dart';
 import '../crypto/iso9797.dart';
 import '../lds/tlv.dart';
 import '../crypto/aes.dart';
+import '../crypto/crypto_utils.dart';
 import '../crypto/des.dart';
 
 /// Class defines secure messaging protocol as specified in ICAO 9303 p11.
 class MrtdSM extends SecureMessaging {
   final _log = Logger("mrtd.sm");
-  static final bool Function(List<dynamic>, List<dynamic>) _eq =
-      const ListEquality().equals;
 
   SSC _ssc;
   set ssc(final SSC ssc) => _ssc = ssc;
@@ -70,15 +68,17 @@ class MrtdSM extends SecureMessaging {
 
   @override
   ResponseAPDU unprotect(ResponseAPDU rapdu) {
+    // Increment SSC for every received protected response (also before
+    // decrypting data), otherwise SSC would get out of sync with ICC
+    // for the rest of the session.
+    _ssc.increment();
+
     if (rapdu.status == StatusWord.smDataMissing ||
         rapdu.status == StatusWord.smDataInvalid ||
         (rapdu.data?.isEmpty ?? true)) {
       //RAPDU should have data
       return rapdu;
     }
-
-    // Increment SSC should be made before decrypting data
-    _ssc.increment();
 
     _log.debug("Unprotecting RAPDU: $rapdu");
     final tvDataDO = parseDataDOFromRAPDU(rapdu);
@@ -92,7 +92,7 @@ class MrtdSM extends SecureMessaging {
     _log.verbose("  used SSC=${_ssc.toBytes().hex()}");
     _log.verbose("APDU CC=${do8E.value.hex()}");
     _log.verbose("Calculated CC=${CC.hex()}");
-    if (!_eq(CC, do8E.value)) {
+    if (!constantTimeEquals(CC, do8E.value)) {
       throw SMError("Invalid MAC of response APDU");
     }
 
@@ -176,7 +176,8 @@ class MrtdSM extends SecureMessaging {
 
   @visibleForTesting
   CommandAPDU maskCmd(final CommandAPDU cmd) {
-    CommandAPDU mcmd = cmd;
+    // Work on a copy so the caller's command APDU is not mutated.
+    CommandAPDU mcmd = cmd.copy();
     mcmd.cla |= ISO7816_CLA.SM_HEADER_AUTHN;
     return mcmd;
   }

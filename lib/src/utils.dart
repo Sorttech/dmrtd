@@ -44,11 +44,19 @@ class Utils {
     return raw.sublist(raw.length - i >= minLen ? i : raw.length - minLen);
   }
 
-  static Uint8List bigIntToUint8List({required BigInt bigInt}) =>
-      bigIntToByteData(bigInt).buffer.asUint8List();
+  /// Returns serialized [bigInt] in big endian byte order.
+  /// When [length] is provided the result is left-padded with zero bytes to
+  /// exactly [length] bytes (fixed-width encoding as required by ICAO 9303).
+  static Uint8List bigIntToUint8List({required BigInt bigInt, int? length}) =>
+      bigIntToByteData(bigInt, length: length).buffer.asUint8List();
 
-  static ByteData bigIntToByteData(BigInt bigInt) {
-    final data = ByteData((bigInt.bitLength / 8).ceil());
+  static ByteData bigIntToByteData(BigInt bigInt, {int? length}) {
+    final minLength = (bigInt.bitLength / 8).ceil();
+    if (length != null && length < minLength) {
+      throw ArgumentError.value(length, "length",
+          "is too small to encode BigInt of $minLength bytes");
+    }
+    final data = ByteData(length ?? minLength);
     var _bigInt = bigInt;
 
     for (var i = 1; i <= data.lengthInBytes; i++) {

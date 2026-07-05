@@ -59,6 +59,13 @@ void main() {
     tvPadded = "000102030405060708090A0B0C0D0E0F8000000000000000".parseHex();
     expect(ISO9797.pad(tv, blockSize), tvPadded);
     expect(ISO9797.unpad(tvPadded), tv);
+
+    // Unpadding all-zero data should throw instead of walking past the
+    // start of the buffer.
+    expect(() => ISO9797.unpad("0000000000000000".parseHex()),
+        throwsFormatException);
+    // Same for empty data.
+    expect(() => ISO9797.unpad("".parseHex()), throwsFormatException);
   });
 
   test('ISO9797 MAC algorithm 3', () {
